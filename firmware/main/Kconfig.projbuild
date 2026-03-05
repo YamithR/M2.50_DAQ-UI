@@ -1,0 +1,30 @@
+menu "M2 DAQ Configuration"
+
+    config M2_WIFI_SSID
+        string "WiFi SSID"
+        default "M2-DAQ_AP"
+        help
+            SSID of the WiFi network the ESP32-S3 will connect to (STA mode).
+            Can be overridden at runtime via POST /api/config.
+
+    config M2_WIFI_PASSWORD
+        string "WiFi Password"
+        default ""
+        help
+            WPA2 password. Leave empty for open networks.
+
+    config M2_HOSTNAME
+        string "mDNS Hostname"
+        default "m2daq"
+        help
+            The ESP32 will be reachable at http://<hostname>.local/ once mDNS
+            is active. Also used as the BLE advertised device name prefix.
+
+    config M2_HTTP_PORT
+        int "HTTP Server Port"
+        default 80
+        range 1 65535
+        help
+            TCP port for the web server. Default 80 requires no port in the URL.
+
+endmenu

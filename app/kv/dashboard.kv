@@ -1,0 +1,53 @@
+#:kivy 2.3
+
+<DashboardScreen>:
+    name: 'dashboard'
+    canvas.before:
+        Color:
+            rgba: 0.043, 0.043, 0.043, 1
+        Rectangle:
+            pos:  self.pos
+            size: self.size
+
+    BoxLayout:
+        orientation: 'vertical'
+
+        # ── Status bar ──────────────────────────────────────────── #
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(32)
+            padding: [dp(8), dp(4)]
+            spacing: dp(8)
+            canvas.before:
+                Color:
+                    rgba: 0.1, 0.1, 0.1, 1
+                Rectangle:
+                    pos:  self.pos
+                    size: self.size
+
+            Label:
+                id: status_bar
+                text: 'Inicializando...'
+                font_size: sp(11)
+                color: 0.4, 0.4, 0.4, 1
+                halign: 'left'
+                text_size: self.size
+                valign: 'middle'
+
+            Button:
+                text: '← VOLVER'
+                size_hint_x: None
+                width: dp(90)
+                font_size: sp(11)
+                background_color: 0.18, 0.18, 0.18, 1
+                on_release:
+                    root.manager.current = 'scan'
+
+        # ── WebView ─────────────────────────────────────────────── #
+        # WebView widget: use kivy_garden.webview on Android,
+        # or WebView from kivy.garden.webview / pywebview on Windows.
+        # The id 'webview_widget' is referenced from dashboard_screen.py.
+        WebView:
+            id: webview_widget
+            url: ''

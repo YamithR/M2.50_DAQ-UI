@@ -1,0 +1,31 @@
+# M2.50 DAQ — Python / Kivy dependencies
+#
+# Install:
+#   pip install -r requirements.txt
+#
+# Build tools (only needed on the build machine, not at runtime):
+#   pip install PyInstaller pyinstaller-hooks-contrib   # Windows EXE
+#   pip install buildozer                               # Android APK (Linux host)
+
+# Core UI framework
+kivy>=2.3.0
+kivymd>=1.2.0         # Material Design widgets (optional, used for styling)
+
+# BLE client (cross platform: Windows WinRT, Linux BlueZ, Android via pyjnius)
+# Nota: bleak 0.21.x requiere Python <3.13; usar bleak>=2.0.0 con Python 3.13+
+bleak>=2.0.0
+
+# WebView for Kivy (Android: kivy_garden.webview, Windows: pywebview)
+# On Android: handled automatically by buildozer garden requirements
+# On Windows: install pywebview for the desktop WebView widget
+pywebview>=4.4.1; sys_platform == "win32"
+
+# --- Build tools (opcional, instalar por separado) ---
+ PyInstaller>=6.5.0
+ pyinstaller-hooks-contrib
+ buildozer>=1.5.0
+ Cython>=3.0.8         # Required by buildozer for Android
+
+# --- Herramientas MicroPython ---
+ mpremote>=1.27.0      # Despliegue al ESP32 con MicroPython
+ esptool>=5.0.0        # Flash de firmware MicroPython al ESP32
