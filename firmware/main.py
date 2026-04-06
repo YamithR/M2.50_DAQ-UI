@@ -63,6 +63,20 @@ def _start_ap_fallback() -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Inicialización USB HID (no fatal — el sistema sigue funcionando sin HID)
+# ---------------------------------------------------------------------------
+def init_hid() -> None:
+    """Intenta registrar el mouse HID absoluto por USB OTG.
+    Fallo silencioso si el firmware no soporta USB Device.
+    """
+    try:
+        import hid_mouse
+        hid_mouse.init()
+    except Exception as e:
+        print(f"[hid] No se pudo inicializar: {e}")
+
+
+# ---------------------------------------------------------------------------
 # Coroutine principal
 # ---------------------------------------------------------------------------
 async def main():
@@ -76,6 +90,9 @@ async def main():
 # Ventana de interrupción: 3 s para que Ctrl+C pueda detener el programa
 # antes de que asyncio bloquee el REPL.
 time.sleep_ms(3000)
+
+# Inicializar USB HID antes de WiFi (el stack USB debe estar listo al arrancar)
+init_hid()
 
 connect_wifi()
 asyncio.run(main())

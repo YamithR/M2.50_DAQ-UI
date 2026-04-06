@@ -51,10 +51,10 @@
 
   // ── Función de despacho a todos los módulos ────────────────────────────────
   function dispatch(d) {
-    if (window.svgBolt)   svgBolt.update(d);
-    if (window.gauges)    gauges.update(d);
-    if (window.encoders)  encoders.update(d);
-    if (window.charts)    charts.push(d);
+    if (window.svgBolt)    svgBolt.update(d);
+    if (window.gauges)     gauges.update(d);
+    if (window.encoders)   encoders.update(d);
+    if (window.charts)     charts.push(d);
 
     // Actualizar tabla de sensores
     _updateTable(d);
@@ -104,13 +104,13 @@
     return {
       s1, s2, s3,
       gas_valve: s3,
-      roll:       +roll.toFixed(2),
-      pitch:      +pitch.toFixed(2),
-      yaw:        +simYaw.toFixed(2),
-      yaw_signed: +(((simYaw + 180) % 360) - 180).toFixed(2),
-      enc_h:  simEncH,
-      enc_v:  simEncV,
-      ts:     Math.round(performance.now()),
+      roll:         +roll.toFixed(2),
+      pitch:        +pitch.toFixed(2),
+      yaw:          +simYaw.toFixed(2),
+      yaw_signed:   +(((simYaw + 180) % 360) - 180).toFixed(2),
+      enc_h:        simEncH,
+      enc_v:        simEncV,
+      ts:           Math.round(performance.now()),
     };
   }
 

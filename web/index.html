@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M2.50 DAQ — Dashboard</title>
   <style>
-    /* ---- Variables de paleta ---- */
+    /* ── Variables de paleta ────────────────────────────────────────────── */
     :root {
       --gunmetal:   #2a2d30;
       --panel:      #1e2124;
@@ -17,9 +17,12 @@
       --text:       #d0d4d8;
       --text-dim:   #7a8290;
       --border:     #3a3f45;
+      --nav-h:      46px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
 
     body {
       background: var(--panel);
@@ -29,45 +32,125 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      padding: 8px;
     }
 
-    /* ---- Barra de estado WS ---- */
+    /* ════════════════════════════════════════════════════════════════════
+       NAVBAR SUPERIOR
+       ════════════════════════════════════════════════════════════════════ */
+    #topnav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #16191c;
+      border-bottom: 1px solid var(--border);
+      height: var(--nav-h);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      flex-shrink: 0;
+    }
+
+    .nav-brand {
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--army-light);
+      letter-spacing: 1px;
+      white-space: nowrap;
+      margin-right: 6px;
+    }
+
+    .nav-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .nav-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .nav-toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-btn {
+      background: #1e2124;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 3px 8px;
+      font-family: inherit;
+      font-size: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      user-select: none;
+    }
+    .nav-btn.on {
+      background: var(--army-green);
+      color: #c8d4a0;
+      border-color: var(--army-light);
+    }
+    .nav-btn:hover { border-color: var(--army-light); color: var(--text); }
+
+    /* ════════════════════════════════════════════════════════════════════
+       ÁREA DE CONTENIDO RESPONSIVE
+       ════════════════════════════════════════════════════════════════════ */
+    .page-wrap {
+      flex: 1;
+      max-width: 980px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* ── Barra de estado WS ─────────────────────────────────────────────── */
     #ws-status {
       background: var(--gunmetal);
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 6px 12px;
+      padding: 5px 10px;
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 12px;
+      font-size: 11px;
     }
     #ws-dot {
-      width: 10px; height: 10px;
+      width: 9px; height: 9px;
       border-radius: 50%;
       background: var(--danger);
       flex-shrink: 0;
       transition: background 0.3s;
     }
-    #ws-dot.connected    { background: var(--safe); }
-    #ws-dot.simulating   { background: var(--amber); }
+    #ws-dot.connected  { background: var(--safe); }
+    #ws-dot.simulating { background: var(--amber); }
     #ws-text { flex: 1; }
     #ws-freq { color: var(--text-dim); }
 
-    /* ---- Panel principal ---- */
+    /* ── Panel principal ────────────────────────────────────────────────── */
     .container {
       background: var(--gunmetal);
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 12px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
-    /* ---- SVG del cerrojo ---- */
+    /* ── SVG cerrojo ────────────────────────────────────────────────────── */
     #bolt-svg-wrapper {
       width: 100%;
       overflow: hidden;
@@ -81,7 +164,6 @@
       display: block;
     }
 
-    /* Animación de retroceso al disparar */
     @keyframes recoil {
       0%   { transform: translateX(0); }
       15%  { transform: translateX(-6px); }
@@ -92,25 +174,17 @@
     }
     .recoil-active { animation: recoil 80ms linear; }
 
-    /* ---- HUD de estados ---- */
+    /* ── HUD LEDs ────────────────────────────────────────────────────────── */
     .hud-row {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       flex-wrap: wrap;
     }
-
-    .led-group {
-      display: flex;
-      gap: 12px;
-    }
-    .led-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .led-group { display: flex; gap: 10px; }
+    .led-item  { display: flex; align-items: center; gap: 5px; }
     .led {
-      width: 14px; height: 14px;
+      width: 13px; height: 13px;
       border-radius: 50%;
       background: #333;
       border: 2px solid #555;
@@ -125,22 +199,23 @@
       background: #111;
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 4px 10px;
-      font-size: 12px;
+      padding: 3px 8px;
+      font-size: 11px;
       color: var(--text-dim);
-      min-width: 140px;
+      min-width: 130px;
     }
     #bolt-status span { color: var(--text); font-weight: bold; }
 
     #valve-text {
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 4px;
       font-weight: bold;
-      font-size: 12px;
+      font-size: 11px;
       background: #1a0000;
       color: #555;
       border: 1px solid #333;
       transition: background 0.05s, color 0.05s, box-shadow 0.05s;
+      white-space: nowrap;
     }
     #valve-text.firing {
       background: var(--danger);
@@ -148,32 +223,34 @@
       box-shadow: 0 0 12px var(--danger);
     }
 
-    /* ---- Tabla de sensores ---- */
+    /* ── Tabla de sensores ──────────────────────────────────────────────── */
     .sensor-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12px;
+      font-size: 11px;
     }
     .sensor-table th {
       background: var(--army-green);
       color: #c8d0a0;
-      padding: 4px 8px;
+      padding: 3px 7px;
       text-align: left;
       font-weight: normal;
       border: 1px solid var(--border);
     }
     .sensor-table td {
-      padding: 3px 8px;
+      padding: 2px 7px;
       border: 1px solid var(--border);
       color: var(--text);
     }
     .sensor-table tr:nth-child(even) td { background: #242830; }
     .val { color: var(--amber); font-weight: bold; }
 
-    /* ---- Panel row (IMU + Encoders) ---- */
+    /* ════════════════════════════════════════════════════════════════════
+       PANEL FILAS (IMU + Encoders)
+       ════════════════════════════════════════════════════════════════════ */
     .panel-row {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
@@ -181,88 +258,88 @@
       background: var(--gunmetal);
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 12px;
+      padding: 10px;
       flex: 1;
-      min-width: 280px;
+      min-width: 260px;
     }
     .panel h3 {
       color: var(--army-light);
-      font-size: 12px;
+      font-size: 11px;
       letter-spacing: 1px;
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 4px;
+      padding-bottom: 3px;
     }
 
-    /* ---- Gauges (IMU) ---- */
-    .gauges-row {
+    /* ── Gauges IMU ─────────────────────────────────────────────────────── */
+    /* Mosaico: Roll+Yaw en columna izquierda, Pitch ocupa la altura completa */
+    .imu-mosaic {
       display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
+      gap: 10px;
+      align-items: stretch;
+      margin-bottom: 8px;
     }
-    .gauge-wrap {
+    .imu-col-left {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .imu-col-right {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
     }
-    .gauge-label {
-      font-size: 10px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .gauge-val {
-      font-size: 11px;
-      color: var(--amber);
-      font-weight: bold;
-    }
+    .gauge-wrap  { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .gauge-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+    .gauge-val   { font-size: 10px; color: var(--amber); font-weight: bold; }
 
-    /* ---- Calibration buttons ---- */
+    /* ── Botones calibración ─────────────────────────────────────────────── */
     .btn-cal {
       background: #1a1d20;
       color: var(--text-dim);
       border: 1px solid var(--border);
       border-radius: 3px;
-      padding: 4px 10px;
+      padding: 3px 8px;
       font-family: inherit;
-      font-size: 11px;
+      font-size: 10px;
       cursor: pointer;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
     .btn-cal:hover { background: var(--army-green); color: #d0d8a0; border-color: var(--army-light); }
     .btn-cal.ok    { background: var(--safe); color: #fff; border-color: var(--safe); }
+    .cal-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
 
-    .cal-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-
-    /* ---- Encoders ---- */
+    /* ── Encoders ────────────────────────────────────────────────────────── */
     .enc-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 10px;
+      gap: 6px;
+      margin-bottom: 8px;
     }
     .enc-box {
       background: #111;
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 6px 10px;
+      padding: 5px 8px;
       text-align: center;
     }
-    .enc-box .enc-label { font-size: 10px; color: var(--text-dim); }
-    .enc-box .enc-value { font-size: 22px; color: var(--amber); font-weight: bold; }
-    .enc-compass { display: flex; justify-content: center; margin-top: 6px; }
+    .enc-box .enc-label { font-size: 9px; color: var(--text-dim); }
+    .enc-box .enc-value { font-size: 20px; color: var(--amber); font-weight: bold; }
+    .enc-compass { display: flex; justify-content: center; margin-top: 4px; }
 
-    /* ---- Charts ---- */
+
+
+    /* ════════════════════════════════════════════════════════════════════
+       CONTENEDORES DE GRÁFICAS
+       ════════════════════════════════════════════════════════════════════ */
     .chart-container {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 8px;
     }
-    /* Cadencia ocupa el ancho completo de la cuadrícula */
     .chart-panel.span-full { grid-column: 1 / -1; }
 
     .chart-panel {
@@ -271,382 +348,344 @@
       border-radius: 6px;
       padding: 8px;
     }
-    .chart-panel h4 {
-      font-size: 11px;
-      color: var(--army-light);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 6px;
-    }
     .chart-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
-    .chart-header h4 { margin-bottom: 0; }
+    .chart-panel h4 {
+      font-size: 10px;
+      color: var(--army-light);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0;
+    }
     .chart-win-sel {
       background: #1a1d20;
       color: var(--army-light);
       border: 1px solid var(--border);
       border-radius: 3px;
       font-family: monospace;
-      font-size: 10px;
+      font-size: 9px;
       padding: 2px 4px;
       cursor: pointer;
     }
-    .chart-win-sel:focus { outline: 1px solid var(--army-green); }
     .cad-live {
       font-family: monospace;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
       color: var(--amber);
       text-align: center;
-      padding: 2px 0 4px;
-      letter-spacing: 1px;
-    }
-    .cad-live .cad-state {
-      font-size: 10px;
-      font-weight: normal;
-      color: var(--danger);
-      margin-left: 8px;
-      vertical-align: middle;
+      padding: 1px 0 3px;
     }
 
-    /* ---- Leyendas de series ---- */
-    .chart-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 14px;
-      font-size: 10px;
-      color: var(--text-dim);
-      margin-bottom: 4px;
-      padding: 0 2px;
+    /* ════════════════════════════════════════════════════════════════════
+       RESPONSIVE — Tablet (≤ 768 px)
+       ════════════════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .panel { min-width: 100%; }
+      .chart-container { grid-template-columns: 1fr; }
+      .sensor-table td, .sensor-table th { font-size: 10px; padding: 2px 5px; }
+      .gauges-row { justify-content: center; }
     }
-    .chart-legend-item {
-      display: flex;
-      align-items: center;
-      white-space: nowrap;
+
+    /* ════════════════════════════════════════════════════════════════════
+       RESPONSIVE — Móvil (≤ 480 px)
+       ════════════════════════════════════════════════════════════════════ */
+    @media (max-width: 480px) {
+      body { font-size: 11px; }
+      .page-wrap { padding: 5px; gap: 5px; }
+      .nav-brand { font-size: 11px; }
+      .nav-btn   { padding: 2px 5px; font-size: 9px; }
+      .enc-box .enc-value { font-size: 16px; }
+      .panel { padding: 7px; }
+      #bolt-svg-wrapper { max-height: 140px; overflow: hidden; }
+      .hud-row { gap: 6px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ================================================================
-       BARRA DE ESTADO WEBSOCKET
-       ================================================================ -->
-  <div id="ws-status">
-    <div id="ws-dot" class="simulating"></div>
-    <span id="ws-text">Simulación local — conectando…</span>
-    <span id="ws-freq"></span>
-  </div>
+  <!-- ════════════════════════════════════════════════════════════════════════
+       NAVBAR SUPERIOR — toggles de módulos
+       ════════════════════════════════════════════════════════════════════════ -->
+  <nav id="topnav">
+    <div class="nav-brand">M2.50 DAQ</div>
+    <div class="nav-sep"></div>
+    <span class="nav-label">Vista:</span>
+    <div class="nav-toggles">
+      <button class="nav-btn on" id="btn-imu"      onclick="toggleModule('panel-imu',       this)">IMU</button>
+      <button class="nav-btn on" id="btn-enc"      onclick="toggleModule('panel-encoders',  this)">Encoders</button>
+      <button class="nav-btn on" id="btn-cadencia" onclick="toggleModule('cpanel-cadencia', this)">Cadencia</button>
+      <button class="nav-btn on" id="btn-s3state"  onclick="toggleModule('cpanel-s3state',  this)">S3 Estado</button>
+      <button class="nav-btn on" id="btn-sensors"  onclick="toggleModule('cpanel-sensors',  this)">S1/S2/S3</button>
+      <button class="nav-btn on" id="btn-imu-ch"   onclick="toggleModule('cpanel-imu',      this)">IMU R/P/Y</button>
+      <button class="nav-btn on" id="btn-enc-ch"   onclick="toggleModule('cpanel-enc',      this)">ENC H/V</button>
+    </div>
+  </nav>
 
-  <!-- ================================================================
-       PANEL PRINCIPAL: SVG CERROJO + INDICADORES
-       ================================================================ -->
-  <div class="container">
+  <!-- ════════════════════════════════════════════════════════════════════════
+       CONTENIDO PRINCIPAL (centrado, max 980 px)
+       ════════════════════════════════════════════════════════════════════════ -->
+  <div class="page-wrap">
 
-    <!-- SVG del mecanismo de cerrojo M2.50 -->
-    <div id="bolt-svg-wrapper">
-      <svg id="bolt-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
-
-        <!-- Fondo del receptor -->
-        <rect x="0" y="0" width="800" height="300" fill="#0d0f10"/>
-
-        <!-- Carcasa exterior del receptor -->
-        <rect x="10" y="40" width="780" height="220" rx="10" fill="#1a1d1f" stroke="#3a4050" stroke-width="2"/>
-
-        <!-- Carril guía superior -->
-        <rect x="20" y="48" width="760" height="12" rx="3" fill="#242830" stroke="#3a4050" stroke-width="1"/>
-        <!-- Carril guía inferior -->
-        <rect x="20" y="240" width="760" height="12" rx="3" fill="#242830" stroke="#3a4050" stroke-width="1"/>
-
-        <!-- Cañón (lado derecho) — conducto del proyectil -->
-        <rect x="660" y="100" width="130" height="100" rx="4"
-              fill="#0a0c0e" stroke="#3a4050" stroke-width="2"/>
-        <rect x="680" y="120" width="90" height="60" rx="2" fill="#050607"/>
-        <!-- Cámara de gas -->
-        <ellipse cx="670" cy="150" rx="18" ry="28" fill="#141820" stroke="#3a4050" stroke-width="1.5"/>
-
-        <!-- Air-blast (chorro de gas, visible cuando S3 activo) -->
-        <g id="air-blast" opacity="0">
-          <ellipse cx="715" cy="150" rx="55" ry="22" fill="none"
-                   stroke="#4488ff" stroke-width="3" opacity="0.7"/>
-          <ellipse cx="720" cy="150" rx="38" ry="13" fill="#1a4080" opacity="0.5"/>
-          <ellipse cx="725" cy="150" rx="22" ry="7"  fill="#3060c0" opacity="0.7"/>
-        </g>
-
-        <!-- Pared trasera del receptor (tope del muelle) -->
-        <rect x="10" y="55" width="28" height="190" rx="4" fill="#1e2228" stroke="#3a4050" stroke-width="1.5"/>
-
-        <!-- GRUPO DEL CERROJO (animado) -->
-        <g id="bolt-group" transform="translate(100,0)">
-          <!-- Cuerpo principal del cerrojo -->
-          <rect x="0" y="75" width="200" height="150" rx="6"
-                fill="#3d4555" stroke="#5a6070" stroke-width="1.5"/>
-
-          <!-- Cara del cerrojo (extractor + eyector) -->
-          <rect x="185" y="88" width="20" height="124" rx="3"
-                fill="#252c38" stroke="#4a5568" stroke-width="1.5"/>
-
-          <!-- Percutor -->
-          <circle cx="196" cy="150" r="9" fill="#8b0000" stroke="#c00" stroke-width="1.5"/>
-          <circle cx="196" cy="150" r="4" fill="#ff2222"/>
-
-          <!-- Nervio superior del cerrojo -->
-          <rect x="8" y="75" width="178" height="18" rx="3"
-                fill="#303848" stroke="#4a5568" stroke-width="1"/>
-
-          <!-- Nervio inferior del cerrojo -->
-          <rect x="8" y="207" width="178" height="18" rx="3"
-                fill="#303848" stroke="#4a5568" stroke-width="1"/>
-
-          <!-- Leva de disparo (cam path) -->
-          <path d="M 50,105 L 130,105 L 155,130 L 130,155 L 50,155 Z"
-                fill="#242c3a" stroke="#4a5568" stroke-width="1"/>
-
-          <!-- Barra de conexión interna -->
-          <rect x="60" y="120" width="80" height="22" rx="2"
-                fill="#1e2530" stroke="#3a4050" stroke-width="1"/>
-
-          <!-- Detalle eyector -->
-          <rect x="188" y="92" width="6" height="30" rx="1"
-                fill="#6a3030" stroke="#8a4040" stroke-width="1"/>
-
-          <!-- Detalle extractor -->
-          <rect x="188" y="178" width="6" height="30" rx="1"
-                fill="#4a4a30" stroke="#6a6a40" stroke-width="1"/>
-
-          <!-- Tornillo de fijación (top) -->
-          <circle cx="30"  cy="84"  r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
-          <circle cx="170" cy="84"  r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
-          <!-- Tornillo de fijación (bottom) -->
-          <circle cx="30"  cy="216" r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
-          <circle cx="170" cy="216" r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
-        </g>
-
-        <!-- Muelle de retroceso (entre pared trasera y cara del cerrojo) -->
-        <!-- Generado dinámicamente por svg_bolt.js via #spring-path -->
-        <path id="spring-path" d="" fill="none" stroke="#606878" stroke-width="2" stroke-linecap="round"/>
-
-        <!-- Etiquetas de posición -->
-        <text x="138" y="36" fill="#4b5320" font-family="monospace" font-size="10" text-anchor="middle">
-          BLOQUEADO
-        </text>
-        <text x="348" y="36" fill="#4b5320" font-family="monospace" font-size="10" text-anchor="middle">
-          RETENEDOR
-        </text>
-        <text x="638" y="36" fill="#4b5320" font-family="monospace" font-size="10" text-anchor="middle">
-          DISPARO
-        </text>
-
-        <!-- Marcadores de posición (líneas de referencia) -->
-        <line x1="138" y1="40" x2="138" y2="260" stroke="#4b5320" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
-        <line x1="348" y1="40" x2="348" y2="260" stroke="#4b5320" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
-        <line x1="638" y1="40" x2="638" y2="260" stroke="#4b5320" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
-
-      </svg>
-    </div><!-- #bolt-svg-wrapper -->
-
-    <!-- HUD: LEDs + estado + válvula -->
-    <div class="hud-row">
-      <div class="led-group">
-        <div class="led-item">
-          <div class="led" id="led-s1"></div>
-          <span>S1 BLOQ.</span>
-        </div>
-        <div class="led-item">
-          <div class="led" id="led-s2"></div>
-          <span>S2 RET.</span>
-        </div>
-        <div class="led-item">
-          <div class="led" id="led-s3"></div>
-          <span>S3 VÁL.</span>
-        </div>
-      </div>
-
-      <div id="bolt-status">Estado: <span id="bolt-status-text">—</span></div>
-
-      <div id="valve-text">VÁLVULA CERRADA</div>
+    <!-- Barra de estado WebSocket -->
+    <div id="ws-status">
+      <div id="ws-dot" class="simulating"></div>
+      <span id="ws-text">Simulación local — conectando…</span>
+      <span id="ws-freq"></span>
     </div>
 
-    <!-- Tabla resumen de sensores -->
-    <table class="sensor-table">
-      <thead>
-        <tr>
-          <th>Canal</th><th>Valor</th>
-          <th>Canal</th><th>Valor</th>
-          <th>Canal</th><th>Valor</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>S1</td><td><span class="val" id="tbl-s1">—</span></td>
-          <td>ROLL</td><td><span class="val" id="tbl-roll">—</span>&deg;</td>
-          <td>ENC_H</td><td><span class="val" id="tbl-enc-h">—</span></td>
-        </tr>
-        <tr>
-          <td>S2</td><td><span class="val" id="tbl-s2">—</span></td>
-          <td>PITCH</td><td><span class="val" id="tbl-pitch">—</span>&deg;</td>
-          <td>ENC_V</td><td><span class="val" id="tbl-enc-v">—</span></td>
-        </tr>
-        <tr>
-          <td>S3</td><td><span class="val" id="tbl-s3">—</span></td>
-          <td>YAW</td><td><span class="val" id="tbl-yaw">—</span>&deg;</td>
-          <td>TS</td><td><span class="val" id="tbl-ts">—</span> ms</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- ================================================================
+         PANEL PRINCIPAL: SVG CERROJO + HUD + TABLA
+         ================================================================ -->
+    <div class="container">
 
-  </div><!-- .container -->
+      <!-- SVG del mecanismo de cerrojo M2.50 -->
+      <div id="bolt-svg-wrapper">
+        <svg id="bolt-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="800" height="300" fill="#0d0f10"/>
+          <rect x="10" y="40" width="780" height="220" rx="10" fill="#1a1d1f" stroke="#3a4050" stroke-width="2"/>
+          <rect x="20" y="48" width="760" height="12" rx="3" fill="#242830" stroke="#3a4050" stroke-width="1"/>
+          <rect x="20" y="240" width="760" height="12" rx="3" fill="#242830" stroke="#3a4050" stroke-width="1"/>
+          <rect x="660" y="100" width="130" height="100" rx="4" fill="#0a0c0e" stroke="#3a4050" stroke-width="2"/>
+          <rect x="680" y="120" width="90" height="60" rx="2" fill="#050607"/>
+          <ellipse cx="670" cy="150" rx="18" ry="28" fill="#141820" stroke="#3a4050" stroke-width="1.5"/>
+          <g id="air-blast" opacity="0">
+            <ellipse cx="715" cy="150" rx="55" ry="22" fill="none" stroke="#4488ff" stroke-width="3" opacity="0.7"/>
+            <ellipse cx="720" cy="150" rx="38" ry="13" fill="#1a4080" opacity="0.5"/>
+            <ellipse cx="725" cy="150" rx="22" ry="7"  fill="#3060c0" opacity="0.7"/>
+          </g>
+          <rect x="10" y="55" width="28" height="190" rx="4" fill="#1e2228" stroke="#3a4050" stroke-width="1.5"/>
+          <g id="bolt-group" transform="translate(100,0)">
+            <rect x="0" y="75" width="200" height="150" rx="6" fill="#3d4555" stroke="#5a6070" stroke-width="1.5"/>
+            <rect x="185" y="88" width="20" height="124" rx="3" fill="#252c38" stroke="#4a5568" stroke-width="1.5"/>
+            <circle cx="196" cy="150" r="9" fill="#8b0000" stroke="#c00" stroke-width="1.5"/>
+            <circle cx="196" cy="150" r="4" fill="#ff2222"/>
+            <rect x="8" y="75" width="178" height="18" rx="3" fill="#303848" stroke="#4a5568" stroke-width="1"/>
+            <rect x="8" y="207" width="178" height="18" rx="3" fill="#303848" stroke="#4a5568" stroke-width="1"/>
+            <path d="M 50,105 L 130,105 L 155,130 L 130,155 L 50,155 Z" fill="#242c3a" stroke="#4a5568" stroke-width="1"/>
+            <rect x="60" y="120" width="80" height="22" rx="2" fill="#1e2530" stroke="#3a4050" stroke-width="1"/>
+            <rect x="188" y="92" width="6" height="30" rx="1" fill="#6a3030" stroke="#8a4040" stroke-width="1"/>
+            <rect x="188" y="178" width="6" height="30" rx="1" fill="#4a4a30" stroke="#6a6a40" stroke-width="1"/>
+            <circle cx="30"  cy="84"  r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
+            <circle cx="170" cy="84"  r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
+            <circle cx="30"  cy="216" r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
+            <circle cx="170" cy="216" r="5" fill="#1a1d20" stroke="#4a5568" stroke-width="1"/>
+          </g>
+          <path id="spring-path" d="" fill="none" stroke="#606878" stroke-width="2" stroke-linecap="round"/>
+          <text x="138" y="36" fill="#4b5320" font-family="monospace" font-size="10" text-anchor="middle">BLOQUEADO</text>
+          <text x="348" y="36" fill="#4b5320" font-family="monospace" font-size="10" text-anchor="middle">RETENEDOR</text>
+          <text x="638" y="36" fill="#4b5320" font-family="monospace" font-size="10" text-anchor="middle">DISPARO</text>
+          <line x1="138" y1="40" x2="138" y2="260" stroke="#4b5320" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+          <line x1="348" y1="40" x2="348" y2="260" stroke="#4b5320" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+          <line x1="638" y1="40" x2="638" y2="260" stroke="#4b5320" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+        </svg>
+      </div>
 
-  <!-- ================================================================
-       PANEL ROW: IMU + ENCODERS
-       ================================================================ -->
-  <div class="panel-row">
-
-    <!-- Panel IMU -->
-    <div class="panel" id="panel-imu">
-      <h3>&#9652; IMU — ISM330DHCX</h3>
-      <div class="gauges-row">
-        <div class="gauge-wrap">
-          <div class="gauge-label">Roll</div>
-          <div id="gauge-roll"></div>
-          <div class="gauge-val"><span id="imu-roll-val">0.0</span>&deg;</div>
+      <!-- HUD: LEDs + estado + válvula -->
+      <div class="hud-row">
+        <div class="led-group">
+          <div class="led-item"><div class="led" id="led-s1"></div><span>S1</span></div>
+          <div class="led-item"><div class="led" id="led-s2"></div><span>S2</span></div>
+          <div class="led-item"><div class="led" id="led-s3"></div><span>S3</span></div>
         </div>
-        <div class="gauge-wrap">
-          <div class="gauge-label">Pitch</div>
-          <div id="gauge-pitch"></div>
-          <div class="gauge-val"><span id="imu-pitch-val">0.0</span>&deg;</div>
+        <div id="bolt-status">Estado: <span id="bolt-status-text">—</span></div>
+        <div id="valve-text">VÁLVULA CERRADA</div>
+      </div>
+
+      <!-- Tabla resumen de sensores -->
+      <table class="sensor-table">
+        <thead>
+          <tr><th>Canal</th><th>Valor</th><th>Canal</th><th>Valor</th><th>Canal</th><th>Valor</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>S1</td><td><span class="val" id="tbl-s1">—</span></td>
+            <td>ROLL</td><td><span class="val" id="tbl-roll">—</span>&deg;</td>
+            <td>ENC_H</td><td><span class="val" id="tbl-enc-h">—</span></td>
+          </tr>
+          <tr>
+            <td>S2</td><td><span class="val" id="tbl-s2">—</span></td>
+            <td>PITCH</td><td><span class="val" id="tbl-pitch">—</span>&deg;</td>
+            <td>ENC_V</td><td><span class="val" id="tbl-enc-v">—</span></td>
+          </tr>
+          <tr>
+            <td>S3</td><td><span class="val" id="tbl-s3">—</span></td>
+            <td>YAW</td><td><span class="val" id="tbl-yaw">—</span>&deg;</td>
+            <td>TS</td><td><span class="val" id="tbl-ts">—</span> ms</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div><!-- .container -->
+
+    <!-- ================================================================
+         PANEL ROW: IMU + Encoders + Barómetro
+         ================================================================ -->
+    <div class="panel-row">
+
+      <!-- Panel IMU -->
+      <div class="panel" id="panel-imu">
+        <h3>&#9652; IMU &mdash; GY-89 (L3GD20 + LSM303D)</h3>
+        <div class="imu-mosaic">
+          <!-- Columna izquierda: Roll (arriba) + Yaw (abajo) -->
+          <div class="imu-col-left">
+            <div class="gauge-wrap">
+              <div class="gauge-label">Roll</div>
+              <div id="gauge-roll"></div>
+              <div class="gauge-val"><span id="imu-roll-val">0.0</span>&deg;</div>
+            </div>
+            <div class="gauge-wrap">
+              <div class="gauge-label">Yaw</div>
+              <div id="gauge-yaw"></div>
+              <div class="gauge-val"><span id="imu-yaw-val">0.0</span>&deg;</div>
+            </div>
+          </div>
+          <!-- Columna derecha: Pitch ocupa la altura completa -->
+          <div class="imu-col-right">
+            <div class="gauge-wrap">
+              <div class="gauge-label">Pitch</div>
+              <div id="gauge-pitch"></div>
+              <div class="gauge-val"><span id="imu-pitch-val">0.0</span>&deg;</div>
+            </div>
+          </div>
         </div>
-        <div class="gauge-wrap">
-          <div class="gauge-label">Yaw</div>
-          <div id="gauge-yaw"></div>
-          <div class="gauge-val"><span id="imu-yaw-val">0.0</span>&deg;</div>
+        <div class="cal-row">
+          <button class="btn-cal" onclick="calibrateRoll()">&#8634; Cal. Roll</button>
+          <button class="btn-cal" onclick="calibratePitch()">&#8645; Cal. Pitch</button>
+          <button class="btn-cal" onclick="calibrateYaw()">&#8634; Cal. Yaw</button>
         </div>
       </div>
-      <div class="cal-row">
-        <button class="btn-cal" onclick="calibrateRoll()">&#8634; Cal. Roll</button>
-        <button class="btn-cal" onclick="calibratePitch()">&#8645; Cal. Pitch</button>
-        <button class="btn-cal" onclick="calibrateYaw()">&#8634; Cal. Yaw</button>
-      </div>
-    </div>
 
-    <!-- Panel Encoders -->
-    <div class="panel" id="panel-encoders">
-      <h3>&#9644; Encoders cuadratura</h3>
-      <div class="enc-grid">
-        <div class="enc-box">
-          <div class="enc-label">ENC_H (horizontal)</div>
-          <div class="enc-value" id="enc-h">0</div>
-          <div id="compass-h" class="enc-compass"></div>
+      <!-- Panel Encoders -->
+      <div class="panel" id="panel-encoders">
+        <h3>&#9644; Encoders cuadratura</h3>
+        <div class="enc-grid">
+          <div class="enc-box">
+            <div class="enc-label">ENC_H (horizontal)</div>
+            <div class="enc-value" id="enc-h">0</div>
+            <div id="compass-h" class="enc-compass"></div>
+          </div>
+          <div class="enc-box">
+            <div class="enc-label">ENC_V (vertical)</div>
+            <div class="enc-value" id="enc-v">0</div>
+            <div id="compass-v" class="enc-compass"></div>
+          </div>
         </div>
-        <div class="enc-box">
-          <div class="enc-label">ENC_V (vertical)</div>
-          <div class="enc-value" id="enc-v">0</div>
-          <div id="compass-v" class="enc-compass"></div>
+        <div class="cal-row">
+          <button class="btn-cal" onclick="resetEncoders()">&#8634; Reset encoders</button>
         </div>
       </div>
-      <div class="cal-row">
-        <button class="btn-cal" onclick="resetEncoders()">&#8634; Reset encoders</button>
+
+    </div><!-- .panel-row -->
+
+    <!-- ================================================================
+         CONTENEDORES DE GRÁFICAS
+         ================================================================ -->
+    <div class="chart-container">
+
+      <!-- Cadencia de fuego — ancho completo -->
+      <div class="chart-panel span-full" id="cpanel-cadencia">
+        <div class="chart-header">
+          <h4>&#9654; Cadencia de fuego</h4>
+          <select id="win-cadencia" class="chart-win-sel">
+            <option value="5">5 s</option><option value="10">10 s</option>
+            <option value="25">25 s</option><option value="30">30 s</option>
+            <option value="40">40 s</option><option value="50">50 s</option>
+            <option value="60" selected>60 s</option>
+          </select>
+        </div>
+        <div class="cad-live"><span id="cad-live">0 disp/min</span></div>
+        <div id="chart-cadencia"></div>
       </div>
-    </div>
 
-  </div><!-- .panel-row -->
-
-  <!-- ================================================================
-       CONTENEDORES DE GRÁFICAS
-       ================================================================ -->
-  <div class="chart-container">
-
-    <!-- Cadencia de fuego — ancho completo -->
-    <div class="chart-panel span-full" id="cpanel-cadencia">
-      <div class="chart-header">
-        <h4>&#9654; Cadencia de fuego</h4>
-        <select id="win-cadencia" class="chart-win-sel">
-          <option value="5">5 s</option><option value="10">10 s</option>
-          <option value="25">25 s</option><option value="30">30 s</option>
-          <option value="40">40 s</option><option value="50">50 s</option>
-          <option value="60" selected>60 s</option>
-        </select>
+      <!-- Estado digital S3 -->
+      <div class="chart-panel" id="cpanel-s3state">
+        <div class="chart-header">
+          <h4>&#9654; Estado S3 &mdash; Válvula</h4>
+          <select id="win-s3state" class="chart-win-sel">
+            <option value="5">5 s</option><option value="10">10 s</option>
+            <option value="25">25 s</option><option value="30">30 s</option>
+            <option value="40">40 s</option><option value="50">50 s</option>
+            <option value="60" selected>60 s</option>
+          </select>
+        </div>
+        <div id="chart-s3state"></div>
       </div>
-      <div class="cad-live"><span id="cad-live">0 disp/min</span></div>
-      <div id="legend-cadencia" class="chart-legend"></div>
-      <div id="chart-cadencia"></div>
-    </div>
 
-    <!-- Estado digital S3 (válvula / disparo) -->
-    <div class="chart-panel" id="cpanel-s3state">
-      <div class="chart-header">
-        <h4>&#9654; Estado digital S3 &mdash; Válvula</h4>
-        <select id="win-s3state" class="chart-win-sel">
-          <option value="5">5 s</option><option value="10">10 s</option>
-          <option value="25">25 s</option><option value="30">30 s</option>
-          <option value="40">40 s</option><option value="50">50 s</option>
-          <option value="60" selected>60 s</option>
-        </select>
+      <!-- Sensores S1 / S2 / S3 -->
+      <div class="chart-panel" id="cpanel-sensors">
+        <div class="chart-header">
+          <h4>&#11164; Sensores S1 / S2 / S3</h4>
+          <select id="win-sensors" class="chart-win-sel">
+            <option value="5">5 s</option><option value="10">10 s</option>
+            <option value="25">25 s</option><option value="30">30 s</option>
+            <option value="40">40 s</option><option value="50">50 s</option>
+            <option value="60" selected>60 s</option>
+          </select>
+        </div>
+        <div id="chart-sensors"></div>
       </div>
-      <div id="legend-s3state" class="chart-legend"></div>
-      <div id="chart-s3state"></div>
-    </div>
 
-    <!-- Sensores digitales S1 / S2 / S3 -->
-    <div class="chart-panel" id="cpanel-sensors">
-      <div class="chart-header">
-        <h4>&#11164; Sensores S1 / S2 / S3</h4>
-        <select id="win-sensors" class="chart-win-sel">
-          <option value="5">5 s</option><option value="10">10 s</option>
-          <option value="25">25 s</option><option value="30">30 s</option>
-          <option value="40">40 s</option><option value="50">50 s</option>
-          <option value="60" selected>60 s</option>
-        </select>
+      <!-- IMU Roll / Pitch / Yaw -->
+      <div class="chart-panel" id="cpanel-imu">
+        <div class="chart-header">
+          <h4>&#9651; IMU &mdash; Roll / Pitch / Yaw</h4>
+          <select id="win-imu" class="chart-win-sel">
+            <option value="5">5 s</option><option value="10">10 s</option>
+            <option value="25">25 s</option><option value="30">30 s</option>
+            <option value="40">40 s</option><option value="50">50 s</option>
+            <option value="60" selected>60 s</option>
+          </select>
+        </div>
+        <div id="chart-imu"></div>
       </div>
-      <div id="legend-sensors" class="chart-legend"></div>
-      <div id="chart-sensors"></div>
-    </div>
 
-    <!-- IMU -->
-    <div class="chart-panel" id="cpanel-imu">
-      <div class="chart-header">
-        <h4>&#9651; IMU &mdash; Roll / Pitch / Yaw</h4>
-        <select id="win-imu" class="chart-win-sel">
-          <option value="5">5 s</option><option value="10">10 s</option>
-          <option value="25">25 s</option><option value="30">30 s</option>
-          <option value="40">40 s</option><option value="50">50 s</option>
-          <option value="60" selected>60 s</option>
-        </select>
+      <!-- Encoders ENC_H / ENC_V -->
+      <div class="chart-panel" id="cpanel-enc">
+        <div class="chart-header">
+          <h4>&#9644; Encoders ENC&#95;H / ENC&#95;V</h4>
+          <select id="win-enc" class="chart-win-sel">
+            <option value="5">5 s</option><option value="10">10 s</option>
+            <option value="25">25 s</option><option value="30">30 s</option>
+            <option value="40">40 s</option><option value="50">50 s</option>
+            <option value="60" selected>60 s</option>
+          </select>
+        </div>
+        <div id="chart-enc"></div>
       </div>
-      <div id="legend-imu" class="chart-legend"></div>
-      <div id="chart-imu"></div>
-    </div>
 
-    <!-- Encoders -->
-    <div class="chart-panel" id="cpanel-enc">
-      <div class="chart-header">
-        <h4>&#9644; Encoders ENC&#95;H / ENC&#95;V</h4>
-        <select id="win-enc" class="chart-win-sel">
-          <option value="5">5 s</option><option value="10">10 s</option>
-          <option value="25">25 s</option><option value="30">30 s</option>
-          <option value="40">40 s</option><option value="50">50 s</option>
-          <option value="60" selected>60 s</option>
-        </select>
-      </div>
-      <div id="legend-enc" class="chart-legend"></div>
-      <div id="chart-enc"></div>
-    </div>
+    </div><!-- .chart-container -->
 
-  </div>
+  </div><!-- .page-wrap -->
 
-  <!-- ================================================================
-       SCRIPTS (orden de carga obligatorio)
-       ================================================================ -->
-  <script src="vendor/uplot.min.js"></script>
+  <!-- ════════════════════════════════════════════════════════════════════════
+       SCRIPTS
+       ════════════════════════════════════════════════════════════════════════ -->
+  <!-- Plotly.js desde CDN (el navegador tiene acceso a internet al abrir el dashboard) -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+
   <script src="js/ws_client.js"></script>
   <script src="js/svg_bolt.js"></script>
   <script src="js/gauges.js"></script>
   <script src="js/encoders.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/bt_toggle.js"></script>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       LÓGICA DE NAVBAR — toggle de módulos
+       ════════════════════════════════════════════════════════════════════════ -->
+  <script>
+    function toggleModule(id, btn) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const hidden = el.style.display === 'none';
+      el.style.display = hidden ? '' : 'none';
+      if (btn) btn.classList.toggle('on', hidden);
+    }
+  </script>
 
 </body>
 </html>

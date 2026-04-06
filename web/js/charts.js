@@ -1,241 +1,179 @@
 /**
- * charts.js — Cuatro gráficas en tiempo real con uPlot.
+ * charts.js — Cinco gráficas en tiempo real con Plotly.js.
  *
- * Ring buffers pre-allocados con Float64Array para minimizar la presión
- * sobre el GC del navegador a 50 Hz sostenidos.
+ * Estrategia de rendimiento:
+ *   · Los datos se acumulan en buffers locales a 50 Hz.
+ *   · Plotly se actualiza cada UPDATE_EVERY frames (~10 Hz) usando
+ *     extendTraces() con maxpoints para ventana deslizante automática.
+ *   · El usuario puede cambiar la ventana de tiempo con los <select>.
  *
- * Ventanas de tiempo:
- *   chart-cadencia → 60 s (3 000 muestras) — cadencia de fuego (disp/min)
- *   chart-sensors  →  6 s (  300 muestras) — estados S1, S2, S3 (0/1)
- *   chart-imu      →  6 s (  300 muestras) — roll, pitch, yaw (°)
- *   chart-enc      →  6 s (  300 muestras) — enc_h, enc_v (cuentas)
- *
- * La cadencia se calcula como la tasa de flancos ascendentes de S3 en una
- * ventana deslizante de 60 s, expresada en disparos/min.
+ * Gráficas:
+ *   chart-cadencia  — Cadencia de fuego (disp/min)
+ *   chart-s3state   — Estado digital S3 (0/1)
+ *   chart-sensors   — S1, S2, S3 digitales
+ *   chart-imu       — Roll, Pitch, Yaw (°)
+ *   chart-enc       — ENC_H, ENC_V (cuentas)
  */
 
 window.charts = (function () {
   'use strict';
 
-  // ── Ring buffer con Float64Array ───────────────────────────────────────────
-  class RingBuffer {
-    constructor(cap) {
-      this.data = new Float64Array(cap);
-      this.cap  = cap;
-      this.size = 0;
-      this.head = 0;
-    }
-    push(val) {
-      this.data[this.head] = val;
-      this.head = (this.head + 1) % this.cap;
-      if (this.size < this.cap) this.size++;
-    }
-    toArray() {
-      const out = new Array(this.size);
-      const start = this.size < this.cap ? 0 : this.head;
-      for (let i = 0; i < this.size; i++) {
-        out[i] = this.data[(start + i) % this.cap];
-      }
-      return out;
-    }
-  }
+  // ── Configuración ──────────────────────────────────────────────────────────
+  const UPDATE_EVERY = 5;   // acumular N muestras antes de enviar a Plotly (~10 Hz)
+  const HZ = 50;
 
-  // ── Capacidades ────────────────────────────────────────────────────────────
-  const N_CADENCIA = 3000;   // 60 s × 50 Hz
-  const N_SHORT    = 3000;   // 60 s × 50 Hz
-
-  // ── Buffers ────────────────────────────────────────────────────────────────
-  const bTs  = new RingBuffer(N_CADENCIA);
-  const bCad = new RingBuffer(N_CADENCIA);   // disparos/min
-  const bS3Cad = new RingBuffer(N_CADENCIA); // S3 digital (0/1) en escala cadencia
-  const bS1  = new RingBuffer(N_SHORT);
-  const bS2  = new RingBuffer(N_SHORT);
-  const bS3  = new RingBuffer(N_SHORT);
-  const bRoll  = new RingBuffer(N_SHORT);
-  const bPitch = new RingBuffer(N_SHORT);
-  const bYaw   = new RingBuffer(N_SHORT);
-  const bEncH  = new RingBuffer(N_SHORT);
-  const bEncV  = new RingBuffer(N_SHORT);
-
-  // Timestamps de flancos S3↑ para el cálculo de cadencia
-  const s3Edges  = [];          // timestamps en segundos
-  const CADEN_WIN = 60.0;       // ventana de cadencia en segundos
-
-  let prevS3   = false;
-  let plots    = {};            // uPlot instances
-  let ready    = false;
-
-  // ── Opciones comunes de uPlot ──────────────────────────────────────────────
-  function commonOpts(series, width) {
-    return {
-      width: width,
-      height: 140,
-      title: '',
-      series,
-      scales: { x: { time: false } },
-      axes: [
-        { stroke: '#5a6878', grid: { stroke: '#2a2d3020' }, ticks: { stroke: '#2a2d30' }, font: '10px monospace' },
-        { stroke: '#5a6878', grid: { stroke: '#2a2d3040' }, ticks: { stroke: '#2a2d30' }, font: '10px monospace' },
-      ],
-      cursor: { show: false },
-      legend: { show: false },
-    };
-  }
-
-  // ── Ancho real del contenedor (deferido al repaint) ───────────────────────
-  function panelWidth(id) {
-    const el = document.getElementById(id);
-    if (!el) return 300;
-    const rect = el.getBoundingClientRect();
-    const w = rect.width > 0 ? rect.width : el.clientWidth;
-    return Math.max(200, Math.floor(w) - 4);
-  }
-
-  // ── ResizeObserver: reajusta el plot cuando el panel cambia de ancho ──────
-  function attachResize(panelId, chartId, plotKey) {
-    if (!window.ResizeObserver) return;
-    const panel = document.getElementById(panelId);
-    if (!panel) return;
-    new ResizeObserver(() => {
-      const p = plots[plotKey];
-      const el = document.getElementById(chartId);
-      if (!p || !el) return;
-      const newW = Math.max(200, Math.floor(panel.getBoundingClientRect().width) - 20);
-      if (Math.abs(newW - p.width) > 4) p.setSize({ width: newW, height: 140 });
-    }).observe(panel);
-  }
-
-  // ── Leyenda HTML personalizada ─────────────────────────────────────────────
-  function buildLegend(id, items) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = items.map(({ color, label, dash }) => {
-      const swatch = dash
-        ? `<svg width="16" height="10" style="vertical-align:middle;margin-right:4px"><line x1="0" y1="5" x2="16" y2="5" stroke="${color}" stroke-width="2" stroke-dasharray="3,2"/></svg>`
-        : `<svg width="10" height="10" style="vertical-align:middle;margin-right:4px"><circle cx="5" cy="5" r="4" fill="${color}"/></svg>`;
-      return `<span class="chart-legend-item">${swatch}${label}</span>`;
-    }).join('');
-  }
-
-  // ── Colores ────────────────────────────────────────────────────────────────
   const C = {
     amber:  '#ffa000',
     green:  '#388e3c',
     red:    '#d32f2f',
-    blue:   '#1565c0',
     cyan:   '#0097a7',
     purple: '#7b1fa2',
     lime:   '#689f38',
     orange: '#e65100',
+    bg:     '#0d0f10',
+    grid:   'rgba(90,104,120,0.18)',
+    tick:   '#5a6878',
   };
 
-  // ── Construcción de gráficas ───────────────────────────────────────────────
+  // ── Estado ─────────────────────────────────────────────────────────────────
+  let ready      = false;
+  let frameCount = 0;
+  let prevS3     = false;
+  const s3Edges  = [];
+  const CADEN_WIN = 60.0;
+
+  // Buffer acumulador (se vierte a Plotly cada UPDATE_EVERY frames)
+  let buf = _emptyBuf();
+
+  function _emptyBuf() {
+    return { t: [], cad: [], s3d: [], s1: [], s2: [], s3: [],
+             roll: [], pitch: [], yaw: [], enc_h: [], enc_v: [] };
+  }
+
+  // ── Configuración base de Plotly ───────────────────────────────────────────
+  const BASE_LAYOUT = {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor:  C.bg,
+    margin:   { l: 52, r: 8, t: 6, b: 26 },
+    font:     { family: 'Courier New,monospace', size: 9, color: C.tick },
+    xaxis:    { gridcolor: C.grid, tickfont: { size: 9 }, zeroline: false },
+    yaxis:    { gridcolor: C.grid, tickfont: { size: 9 }, zeroline: false },
+    legend:   { orientation: 'h', x: 0, y: 1.12, font: { size: 9 },
+                bgcolor: 'rgba(0,0,0,0)', borderwidth: 0 },
+    showlegend: false,
+    hovermode: false,
+  };
+
+  const PLOT_CONFIG = { displayModeBar: false, responsive: true };
+
+  function mkLayout(overrides, h) {
+    return Object.assign({}, BASE_LAYOUT, { height: h || 130 }, overrides);
+  }
+
+  function mkTrace(color, name, extra) {
+    return Object.assign({
+      type: 'scatter', mode: 'lines', name,
+      line: { color, width: 1.5 },
+      x: [], y: [],
+    }, extra || {});
+  }
+
+  // ── Selector de ventana (segundos → muestras) ──────────────────────────────
+  function winSamples(selId) {
+    const el = document.getElementById(selId);
+    return ((el ? parseInt(el.value, 10) : 60)) * HZ;
+  }
+
+  // ── Construcción inicial de gráficas ───────────────────────────────────────
   function buildCadencia() {
-    const w  = panelWidth('chart-cadencia');
     const el = document.getElementById('chart-cadencia');
     if (!el) return;
-    const opts = commonOpts([
-      {},
-      { scale: 'y', stroke: C.amber, label: 'Disp/min', width: 2, fill: C.amber + '18' },
-    ], w);
-    opts.scales.y = { range: [0, 700] };
-    opts.axes[1].stroke = C.amber;
-    buildLegend('legend-cadencia', [
-      { color: C.amber, label: 'Cadencia de fuego (disp/min)' },
-    ]);
-    plots.cadencia = new uPlot(opts, [[], []], el);
-    attachResize('cpanel-cadencia', 'chart-cadencia', 'cadencia');
+    Plotly.newPlot(el, [
+      mkTrace(C.amber, 'Cadencia (disp/min)'),
+    ], mkLayout({
+      height: 150,
+      yaxis: { ...BASE_LAYOUT.yaxis, range: [0, 700],
+               title: { text: 'disp/min', font: { size: 9, color: C.amber } } },
+    }), PLOT_CONFIG);
   }
 
   function buildS3State() {
-    const w  = panelWidth('chart-s3state');
     const el = document.getElementById('chart-s3state');
     if (!el) return;
-    const opts = commonOpts([
-      {},
-      { scale: 'y', stroke: C.red, label: 'Disparo', width: 2 },
-    ], w);
-    opts.scales.y = { range: [-0.15, 1.15] };
-    opts.axes[1] = {
-      stroke: C.red,
-      grid: { stroke: '#2a2d3040' },
-      ticks: { stroke: '#2a2d30' },
-      font: '10px monospace',
-      values: (u, vals) => vals.map(v => {
-        if (Math.abs(v) < 0.1)     return 'Reposo';
-        if (Math.abs(v - 1) < 0.1) return 'Disparo';
-        return '';
-      }),
-      size: 58,
-    };
-    buildLegend('legend-s3state', [
-      { color: C.red, label: 'Estado S3 — Válvula (0=Reposo / 1=Disparo)' },
-    ]);
-    plots.s3state = new uPlot(opts, [[], []], el);
-    attachResize('cpanel-s3state', 'chart-s3state', 's3state');
+    Plotly.newPlot(el, [
+      mkTrace(C.red, 'S3 Válvula', { fill: 'tozeroy', fillcolor: C.red + '28' }),
+    ], mkLayout({
+      yaxis: { ...BASE_LAYOUT.yaxis, range: [-0.1, 1.2],
+               tickvals: [0, 1], ticktext: ['Reposo', 'Disparo'],
+               tickfont: { size: 8 } },
+    }), PLOT_CONFIG);
   }
 
   function buildSensors() {
-    const w  = panelWidth('chart-sensors');
     const el = document.getElementById('chart-sensors');
     if (!el) return;
-    const opts = commonOpts([
-      {},
-      { stroke: C.green,  label: 'S1', width: 2 },
-      { stroke: C.amber,  label: 'S2', width: 2 },
-      { stroke: C.red,    label: 'S3', width: 2 },
-    ], w);
-    opts.scales.y = { range: [-0.3, 1.3] };
-    buildLegend('legend-sensors', [
-      { color: C.green, label: 'S1 — Bloqueado' },
-      { color: C.amber, label: 'S2 — Retenedor' },
-      { color: C.red,   label: 'S3 — Válvula' },
-    ]);
-    plots.sensors = new uPlot(opts, [[], [], [], []], el);
-    attachResize('cpanel-sensors', 'chart-sensors', 'sensors');
+    Plotly.newPlot(el, [
+      mkTrace(C.green,  'S1 Bloqueado'),
+      mkTrace(C.amber,  'S2 Retenedor'),
+      mkTrace(C.red,    'S3 Válvula'),
+    ], mkLayout({
+      showlegend: true,
+      yaxis: { ...BASE_LAYOUT.yaxis, range: [-0.3, 1.3] },
+    }), PLOT_CONFIG);
   }
 
   function buildIMU() {
-    const w  = panelWidth('chart-imu');
     const el = document.getElementById('chart-imu');
     if (!el) return;
-    const opts = commonOpts([
-      {},
-      { stroke: C.amber,  label: 'Roll',  width: 1.5 },
-      { stroke: C.cyan,   label: 'Pitch', width: 1.5 },
-      { stroke: C.purple, label: 'Yaw',   width: 1.5 },
-    ], w);
-    buildLegend('legend-imu', [
-      { color: C.amber,  label: 'Roll (°)' },
-      { color: C.cyan,   label: 'Pitch (°)' },
-      { color: C.purple, label: 'Yaw (°)' },
-    ]);
-    plots.imu = new uPlot(opts, [[], [], [], []], el);
-    attachResize('cpanel-imu', 'chart-imu', 'imu');
+    Plotly.newPlot(el, [
+      mkTrace(C.amber,  'Roll (°)'),
+      mkTrace(C.cyan,   'Pitch (°)'),
+      mkTrace(C.purple, 'Yaw (°)'),
+    ], mkLayout({
+      showlegend: true,
+    }), PLOT_CONFIG);
   }
 
   function buildEncoders() {
-    const w  = panelWidth('chart-enc');
     const el = document.getElementById('chart-enc');
     if (!el) return;
-    const opts = commonOpts([
-      {},
-      { stroke: C.lime,   label: 'ENC_H', width: 1.5 },
-      { stroke: C.orange, label: 'ENC_V', width: 1.5 },
-    ], w);
-    buildLegend('legend-enc', [
-      { color: C.lime,   label: 'ENC_H — Horizontal (cnt)' },
-      { color: C.orange, label: 'ENC_V — Vertical (cnt)' },
-    ]);
-    plots.enc = new uPlot(opts, [[], [], []], el);
-    attachResize('cpanel-enc', 'chart-enc', 'enc');
+    Plotly.newPlot(el, [
+      mkTrace(C.lime,   'ENC_H'),
+      mkTrace(C.orange, 'ENC_V'),
+    ], mkLayout({
+      showlegend: true,
+    }), PLOT_CONFIG);
   }
 
+  // ── Volcado a Plotly ────────────────────────────────────────────────────────
+  function flushToPlotly() {
+    if (!buf.t.length) return;
+
+    const maxCad = winSamples('win-cadencia');
+    const maxS3  = winSamples('win-s3state');
+    const maxSen = winSamples('win-sensors');
+    const maxImu = winSamples('win-imu');
+    const maxEnc = winSamples('win-enc');
+
+    const t = buf.t;
+
+    try { Plotly.extendTraces('chart-cadencia',
+      { x: [t],         y: [buf.cad] }, [0], maxCad); } catch (_) {}
+    try { Plotly.extendTraces('chart-s3state',
+      { x: [t],         y: [buf.s3d] }, [0], maxS3);  } catch (_) {}
+    try { Plotly.extendTraces('chart-sensors',
+      { x: [t, t, t],   y: [buf.s1, buf.s2, buf.s3] }, [0, 1, 2], maxSen); } catch (_) {}
+    try { Plotly.extendTraces('chart-imu',
+      { x: [t, t, t],   y: [buf.roll, buf.pitch, buf.yaw] }, [0, 1, 2], maxImu); } catch (_) {}
+    try { Plotly.extendTraces('chart-enc',
+      { x: [t, t],      y: [buf.enc_h, buf.enc_v] }, [0, 1], maxEnc); } catch (_) {}
+
+    buf = _emptyBuf();
+  }
+
+  // ── Inicialización diferida ────────────────────────────────────────────────
   function init() {
-    // uPlot debe estar disponible antes de inicializar.
-    // Se aplaza un frame extra para que el layout esté completo y
-    // getBoundingClientRect() devuelva anchos reales.
-    if (typeof uPlot === 'undefined') {
+    if (typeof Plotly === 'undefined') {
       setTimeout(init, 200);
       return;
     }
@@ -249,77 +187,41 @@ window.charts = (function () {
     });
   }
 
-  // ── Función pública: push(d) ───────────────────────────────────────────────
+  // ── API pública: push(d) ───────────────────────────────────────────────────
   function push(d) {
     if (!ready) return;
 
-    const tSec = d.ts / 1000.0;
+    const t = d.ts / 1000.0;
 
-    // ─ Cadencia ─
-    // Detectar flanco ascendente de S3
-    if (d.s3 && !prevS3) {
-      s3Edges.push(tSec);
-    }
+    // Cadencia de fuego
+    if (d.s3 && !prevS3) s3Edges.push(t);
     prevS3 = d.s3;
-
-    // Eliminar flancos más antiguos que la ventana
-    while (s3Edges.length > 0 && tSec - s3Edges[0] > CADEN_WIN) {
-      s3Edges.shift();
-    }
-
-    // Cadencia instantánea = flancos en la ventana × (60 / ventana efectiva)
-    const winEff   = Math.min(tSec, CADEN_WIN);
+    while (s3Edges.length > 0 && t - s3Edges[0] > CADEN_WIN) s3Edges.shift();
+    const winEff   = Math.min(t, CADEN_WIN);
     const cadencia = winEff > 0 ? (s3Edges.length / winEff) * 60 : 0;
 
-    bTs.push(tSec);
-    bCad.push(cadencia);
-    bS3Cad.push(d.s3 ? 1 : 0);
-    bS1.push(d.s1 ? 1 : 0);
-    bS2.push(d.s2 ? 1 : 0);
-    bS3.push(d.s3 ? 1 : 0);
-    bRoll.push(d.roll);
-    bPitch.push(d.pitch);
-    bYaw.push(d.yaw_signed);
-    bEncH.push(d.enc_h);
-    bEncV.push(d.enc_v);
+    // Acumular en buffer
+    buf.t.push(t);
+    buf.cad.push(cadencia);
+    buf.s3d.push(d.s3 ? 1 : 0);
+    buf.s1.push(d.s1 ? 1 : 0);
+    buf.s2.push(d.s2 ? 1 : 0);
+    buf.s3.push(d.s3 ? 1 : 0);
+    buf.roll.push(d.roll);
+    buf.pitch.push(d.pitch);
+    buf.yaw.push(d.yaw_signed);
+    buf.enc_h.push(d.enc_h);
+    buf.enc_v.push(d.enc_v);
 
-    // Actualizar gráficas — cada una recorta su propia ventana según el selector
-    const tsArr = bTs.toArray();
+    // Actualizar display de cadencia en tiempo real
+    const livEl = document.getElementById('cad-live');
+    if (livEl) livEl.textContent = Math.round(cadencia) + ' disp/min';
 
-    // Devuelve el número de muestras visible según el <select> del panel dado
-    function winSamples(selId) {
-      const el = document.getElementById(selId);
-      const secs = el ? parseInt(el.value, 10) : 60;
-      return Math.round(secs * 50);   // 50 Hz
-    }
-
-    function sliceLast(arr, n) { return arr.length <= n ? arr : arr.slice(arr.length - n); }
-
-    if (plots.cadencia) {
-      const n   = winSamples('win-cadencia');
-      const ts  = sliceLast(tsArr, n);
-      const cad = sliceLast(bCad.toArray(), n);
-      plots.cadencia.setData([ts, cad]);
-      const livEl = document.getElementById('cad-live');
-      if (livEl && cad.length) livEl.textContent = Math.round(cad[cad.length - 1]) + ' disp/min';
-    }
-    if (plots.s3state) {
-      const n   = winSamples('win-s3state');
-      const ts  = sliceLast(tsArr, n);
-      const s3c = sliceLast(bS3Cad.toArray(), n);
-      plots.s3state.setData([ts, s3c]);
-    }
-    if (plots.sensors) {
-      const n = winSamples('win-sensors');
-      plots.sensors.setData([sliceLast(tsArr, n), sliceLast(bS1.toArray(), n), sliceLast(bS2.toArray(), n), sliceLast(bS3.toArray(), n)]);
-    }
-    if (plots.imu) {
-      const n = winSamples('win-imu');
-      plots.imu.setData([sliceLast(tsArr, n), sliceLast(bRoll.toArray(), n), sliceLast(bPitch.toArray(), n), sliceLast(bYaw.toArray(), n)]);
-    }
-    if (plots.enc) {
-      const n = winSamples('win-enc');
-      plots.enc.setData([sliceLast(tsArr, n), sliceLast(bEncH.toArray(), n), sliceLast(bEncV.toArray(), n)]);
+    // Volcar a Plotly cada UPDATE_EVERY frames
+    frameCount++;
+    if (frameCount >= UPDATE_EVERY) {
+      frameCount = 0;
+      flushToPlotly();
     }
   }
 

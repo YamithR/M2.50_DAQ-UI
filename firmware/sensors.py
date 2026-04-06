@@ -8,7 +8,7 @@ import config
 # ---------------------------------------------------------------------------
 # Estado del módulo
 # ---------------------------------------------------------------------------
-_imu      = None             # Instancia ISM330DHCX (modo hw)
+_imu      = None             # Instancia GY89 (modo hw)
 _pin_s1   = None
 _pin_s2   = None
 _pin_s3   = None
@@ -73,17 +73,18 @@ def init() -> None:
     pin_eh_a.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=_enc_h_isr)
     pin_ev_a.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=_enc_v_isr)
 
-    # IMU — fallo no fatal: encoders y digitales siguen funcionando
+    # IMU/Barómetro GY-89 — fallo no fatal: encoders y digitales siguen funcionando
     try:
-        import ism330dhcx_driver
-        _imu = ism330dhcx_driver.ISM330DHCX(
+        import gy89_driver
+        _imu = gy89_driver.GY89(
             config.PIN_SDA, config.PIN_SCL,
-            addr=config.IMU_ADDR,
+            gyr_addr=config.IMU_GYR_ADDR,
+            acc_addr=config.IMU_ACC_ADDR,
             freq=config.IMU_FREQ,
         )
-        print("[sensors] ISM330DHCX inicializado correctamente.")
+        print("[sensors] GY-89 (L3GD20 + LSM303D + BMP180) inicializado correctamente.")
     except Exception as e:
-        print(f"[sensors] AVISO — IMU no disponible: {e}  (roll/pitch/yaw = 0)")
+        print(f"[sensors] AVISO — IMU/Barómetro GY-89 no disponible: {e}")
         _imu = None
 
     print("[sensors] Hardware inicializado.")
@@ -144,13 +145,13 @@ def _read_hardware() -> dict:
 
     return {
         "s1": s1, "s2": s2, "s3": s3, "gas_valve": s3,
-        "roll":  round(roll,  2),
-        "pitch": round(pitch, 2),
-        "yaw":   round(yaw,   2),
-        "yaw_signed": round(yaw_signed, 2),
-        "enc_h": _counters[0],
-        "enc_v": _counters[1],
-        "ts": time.ticks_ms(),
+        "roll":         round(roll,         2),
+        "pitch":        round(pitch,        2),
+        "yaw":          round(yaw,          2),
+        "yaw_signed":   round(yaw_signed,   2),
+        "enc_h":        _counters[0],
+        "enc_v":        _counters[1],
+        "ts":           time.ticks_ms(),
     }
 
 
@@ -195,11 +196,12 @@ def _read_simulated() -> dict:
 
     return {
         "s1": s1, "s2": s2, "s3": s3, "gas_valve": s3,
-        "roll":  round(roll,          2),
-        "pitch": round(pitch,         2),
-        "yaw":   round(_sim_yaw,      2),
-        "yaw_signed": round(yaw_signed, 2),
-        "enc_h": _sim_eh,
-        "enc_v": _sim_ev,
-        "ts": time.ticks_ms(),
+        "roll":         round(roll,         2),
+        "pitch":        round(pitch,        2),
+        "yaw":          round(_sim_yaw,     2),
+        "yaw_signed":   round(yaw_signed,   2),
+        "enc_h":        _sim_eh,
+        "enc_v":        _sim_ev,
+        "ts":           time.ticks_ms(),
     }
+

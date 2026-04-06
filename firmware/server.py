@@ -140,7 +140,9 @@ async def _ws_client_task(reader, writer) -> None:
 _JSON_TPL = (
     '{{"s1":{s1},"s2":{s2},"s3":{s3},"gas_valve":{gv},'
     '"roll":{roll},"pitch":{pitch},"yaw":{yaw},"yaw_signed":{ys},'
-    '"enc_h":{eh},"enc_v":{ev},"ts":{ts}}}'
+    '"enc_h":{eh},"enc_v":{ev},'
+
+    '"ts":{ts}}}'
 )
 
 
@@ -149,17 +151,34 @@ async def _broadcast_loop() -> None:
 
     Usa drift correction: mide el tiempo real consumido por cada ciclo y
     espera solo el tiempo restante del período, manteniendo la cadencia exacta.
+    También actualiza el mouse HID absoluto en cada ciclo.
     """
     import time
     period = config.PERIOD_MS
 
+    # Importar HID de forma diferida (no fatal si no disponible)
+    try:
+        import hid_mouse
+        _hid_enabled = True
+    except Exception:
+        _hid_enabled = False
+
     while True:
         t_start = time.ticks_ms()
 
-        if _ws_writers:
-            d = sensors.read()
+        d = sensors.read()
 
+        # ── Actualización HID mouse (siempre, independiente de clientes WS) ──
+        if _hid_enabled:
+            try:
+                hid_mouse.update(d["enc_h"], d["enc_v"], d["s3"])
+            except Exception:
+                pass
+
+        if _ws_writers:
             # Construcción manual del JSON (más rápido que json.dumps en MicroPython)
+            # .get() con defaults asegura compatibilidad aunque sensors.py no devuelva
+            # los campos del barómetro (p.ej. versión anterior sin GY-89).
             jstr = _JSON_TPL.format(
                 s1   = "true"  if d["s1"]        else "false",
                 s2   = "true"  if d["s2"]        else "false",
