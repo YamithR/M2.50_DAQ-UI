@@ -86,8 +86,8 @@ def _map_abs(cnt, cnt_min, cnt_max):
 # ══════════════════════════════════════════════════════════════════════════════
 def _init_usb_device():
     """Intenta inicializar mediante usb.device.hid (micropython-lib)."""
-    import usb.device
-    from usb.device.hid import HIDInterface
+    import usb.device# type: ignore
+    from usb.device.hid import HIDInterface# type: ignore
 
     class _AbsMouse(HIDInterface):
         def __init__(self):
@@ -117,13 +117,13 @@ def _init_usb_device():
 # ══════════════════════════════════════════════════════════════════════════════
 def _try_mip_install():
     """Intenta instalar usb-device-hid con mip si machine.USBDevice existe."""
-    import machine
+    import machine# type: ignore
     if not hasattr(machine, 'USBDevice'):
         return False   # Este firmware no tiene soporte USB Device
 
     print("[hid] machine.USBDevice detectado — intentando instalar usb-device-hid via mip …")
     try:
-        import mip
+        import mip# type: ignore
         mip.install("usb-device")
         mip.install("usb-device-hid")
         print("[hid] Paquetes instalados. Reinicia el ESP32 para activar USB HID.")

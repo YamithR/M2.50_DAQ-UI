@@ -6,7 +6,7 @@
 import math
 import time
 import struct
-from machine import I2C, Pin
+from machine import I2C, Pin # type: ignore
 
 # ─────────────────────────────────────────────────────────────────────────────
 # L3GD20 — Giróscopo 3 ejes
