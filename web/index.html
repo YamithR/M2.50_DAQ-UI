@@ -139,6 +139,28 @@
     #ws-text { flex: 1; }
     #ws-freq { color: var(--text-dim); }
 
+    #sim-toggle {
+      background: var(--army-green);
+      color: #c8d4a0;
+      border: 1px solid var(--army-light);
+      border-radius: 3px;
+      padding: 2px 9px;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    #sim-toggle.mode-live {
+      background: #1e2124;
+      color: var(--safe);
+      border-color: var(--safe);
+    }
+    #sim-toggle:hover { filter: brightness(1.15); }
+
     /* ── Panel principal ────────────────────────────────────────────────── */
     .container {
       background: var(--gunmetal);
@@ -435,6 +457,7 @@
       <div id="ws-dot" class="simulating"></div>
       <span id="ws-text">Simulación local — conectando…</span>
       <span id="ws-freq"></span>
+      <button id="sim-toggle" title="Alternar modo simulación / real">SIM</button>
     </div>
 
     <!-- ================================================================

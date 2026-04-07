@@ -45,9 +45,39 @@
   let fpsTimer      = 0;
 
   // ── Elementos DOM de estado ────────────────────────────────────────────────
-  const dot     = document.getElementById('ws-dot');
-  const wsText  = document.getElementById('ws-text');
-  const wsFreq  = document.getElementById('ws-freq');
+  const dot       = document.getElementById('ws-dot');
+  const wsText    = document.getElementById('ws-text');
+  const wsFreq    = document.getElementById('ws-freq');
+  const simToggle = document.getElementById('sim-toggle');
+
+  // forceSim = true → ignora datos WS y corre simulación local
+  let forceSim = false;
+
+  function setForceSim(val) {
+    forceSim = val;
+    if (simToggle) {
+      simToggle.textContent = forceSim ? 'SIM' : 'LIVE';
+      simToggle.classList.toggle('mode-live', !forceSim);
+      simToggle.title = forceSim
+        ? 'Modo simulación local activo — clic para cambiar a LIVE'
+        : 'Modo live activo — clic para forzar simulación';
+    }
+    if (forceSim) {
+      liveMode  = false;
+      simAccum  = 0;
+      lastRafTs = null;
+      setStatus('simulating', 'Simulación local (forzada)');
+    } else {
+      // Reconectar si el WS está cerrado
+      if (!ws || ws.readyState > 1) {
+        if (!retryTimer) connect();
+      }
+    }
+  }
+
+  if (simToggle) {
+    simToggle.addEventListener('click', () => setForceSim(!forceSim));
+  }
 
   // ── Función de despacho a todos los módulos ────────────────────────────────
   function dispatch(d) {
@@ -164,6 +194,7 @@
     };
 
     ws.onmessage = (ev) => {
+      if (forceSim) return;   // toggle en SIM → descartar datos reales
       if (!liveMode) {
         liveMode     = true;
         simAccum     = 0;
