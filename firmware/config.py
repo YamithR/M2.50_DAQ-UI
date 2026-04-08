@@ -47,6 +47,7 @@ PIN_ENC_V_B     = 7    # Encoder vertical fase B (lectura en ISR)
 PIN_S1          = 15   # S1_BLOQUEADO  (activo-bajo, pull-up interno)
 PIN_S2          = 16   # S2_RETENEDOR  (activo-bajo, pull-up interno)
 PIN_S3          = 17   # S3_VÁLVULA    (activo-bajo, pull-up interno)
+PIN_TRIGGER_OUT = 12   # Salida digital: HIGH durante el disparo (sincronizado con clic HID)
 
 # ---------------------------------------------------------------------------
 # IMU / Barómetro — GY-89 10DOF

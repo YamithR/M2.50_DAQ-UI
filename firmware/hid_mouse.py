@@ -70,6 +70,7 @@ _ABS_MAX = 32767
 
 # ── Estado interno ─────────────────────────────────────────────────────────
 _hid_iface    = None   # objeto con método send_abs(buttons, x, y)
+_pin_trigger  = None   # Pin(PIN_TRIGGER_OUT, OUT) — HIGH durante el disparo
 _prev_s3      = False
 _click_frames = 0
 _CLICK_FRAMES = max(1, round(config.HID_CLICK_MS / 20))
@@ -144,7 +145,15 @@ def init() -> bool:
       2. mip install      — si machine.USBDevice existe pero falta el módulo
     Si ninguno funciona, el sistema sigue funcionando sin HID.
     """
-    global _hid_iface
+    global _hid_iface, _pin_trigger
+
+    # ── GPIO trigger OUT — independiente de HID ────────────────────────
+    try:
+        from machine import Pin
+        _pin_trigger = Pin(config.PIN_TRIGGER_OUT, Pin.OUT, value=0)
+        print(f"[hid] Trigger OUT GPIO{config.PIN_TRIGGER_OUT} listo.")
+    except Exception as e:
+        print(f"[hid] Trigger OUT no disponible: {e}")
 
     # ── Intento 1: usb.device.hid ──────────────────────────────────────
     # ImportError  → módulo .py no encontrado
@@ -176,8 +185,22 @@ def init() -> bool:
 # Actualización periódica — llamar a 50 Hz desde el broadcast loop
 # ══════════════════════════════════════════════════════════════════════════════
 def update(enc_h: int, enc_v: int, s3: bool) -> None:
-    """Envía un reporte HID absoluto. No-op si HID no está disponible."""
+    """Envía un reporte HID absoluto y controla GPIO trigger. El trigger
+    funciona aunque USB HID no esté disponible."""
     global _prev_s3, _click_frames
+
+    # ── Detección de flanco y contador de frames — independiente de HID ──
+    if s3 and not _prev_s3:
+        _click_frames = _CLICK_FRAMES
+    _prev_s3 = s3
+
+    buttons = 0x01 if _click_frames > 0 else 0x00
+    if _click_frames > 0:
+        _click_frames -= 1
+
+    # ── GPIO 12 trigger OUT — HIGH sincronizado con el clic ───────────────
+    if _pin_trigger is not None:
+        _pin_trigger.value(buttons)
 
     if _hid_iface is None:
         return
@@ -186,14 +209,6 @@ def update(enc_h: int, enc_v: int, s3: bool) -> None:
     y = _map_abs(enc_v, config.HID_ENC_V_MIN, config.HID_ENC_V_MAX)
     if config.HID_INVERT_Y:
         y = _ABS_MAX - y
-
-    if s3 and not _prev_s3:
-        _click_frames = _CLICK_FRAMES
-    _prev_s3 = s3
-
-    buttons = 0x01 if _click_frames > 0 else 0x00
-    if _click_frames > 0:
-        _click_frames -= 1
 
     try:
         _hid_iface.send_abs(buttons, x, y)
