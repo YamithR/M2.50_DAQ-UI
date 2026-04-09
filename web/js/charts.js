@@ -191,7 +191,7 @@ window.charts = (function () {
   function push(d) {
     if (!ready) return;
 
-    const t = d.ts / 1000.0;
+    const t = d.ts;   // ts ya viene en segundos desde firmware
 
     // Cadencia de fuego
     if (d.s3 && !prevS3) s3Edges.push(t);

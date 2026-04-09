@@ -3,6 +3,7 @@
 
 import time
 import math
+import micropython
 import config
 
 # ---------------------------------------------------------------------------
@@ -19,21 +20,24 @@ _pin_ev_b = None             # Encoder V, fase B (lectura en ISR)
 # sin necesidad de closure con 'global' (más seguro en MicroPython ISR)
 _counters = [0, 0]           # [enc_h, enc_v]
 
+# Métodos pre-enlazados para el hot-path de las ISR.
+# Se asignan en init() para evitar el doble lookup (global + atributo) en cada flanco.
+_eh_b_val = None
+_ev_b_val = None
+
 # ---------------------------------------------------------------------------
-# ISR de encoders (definidas a nivel de módulo para evitar problemas de closure)
+# ISR de encoders — @micropython.native compila a ARM nativo (~3× más rápido)
 # ---------------------------------------------------------------------------
+@micropython.native
 def _enc_h_isr(p):
-    # Cuadratura correcta: dirección = A_actual XOR B
-    # A sube(1)+B=0 → +1 | A baja(0)+B=1 → +1 | A sube(1)+B=1 → -1 | A baja(0)+B=0 → -1
-    a = p.value()
-    b = _pin_eh_b.value()
-    _counters[0] += 1 if (a ^ b) else -1
+    # Cuadratura: dirección = A_actual XOR B
+    # A↑ B=0 → +1 | A↓ B=1 → +1 | A↑ B=1 → -1 | A↓ B=0 → -1
+    _counters[0] += 1 if (p.value() ^ _eh_b_val()) else -1
 
 
+@micropython.native
 def _enc_v_isr(p):
-    a = p.value()
-    b = _pin_ev_b.value()
-    _counters[1] += 1 if (a ^ b) else -1
+    _counters[1] += 1 if (p.value() ^ _ev_b_val()) else -1
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +60,7 @@ _sim_ev_vel    = 0
 # ---------------------------------------------------------------------------
 def init() -> None:
     """Inicializa hardware o parámetros de simulación según config.SIMULATE_SENSORS."""
-    global _imu, _pin_s1, _pin_s2, _pin_s3, _pin_eh_b, _pin_ev_b
+    global _imu, _pin_s1, _pin_s2, _pin_s3, _pin_eh_b, _pin_ev_b, _eh_b_val, _ev_b_val
 
     if config.SIMULATE_SENSORS:
         print("[sensors] Modo SIMULADO — sin hardware externo requerido.")
@@ -76,6 +80,10 @@ def init() -> None:
     _pin_ev_b = Pin(config.PIN_ENC_V_B, Pin.IN, Pin.PULL_UP)
     pin_eh_a  = Pin(config.PIN_ENC_H_A, Pin.IN, Pin.PULL_UP)
     pin_ev_a  = Pin(config.PIN_ENC_V_A, Pin.IN, Pin.PULL_UP)
+
+    # Enlazar métodos en init para que las ISR no hagan lookup de atributo en cada flanco
+    _eh_b_val = _pin_eh_b.value
+    _ev_b_val = _pin_ev_b.value
 
     pin_eh_a.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=_enc_h_isr)
     pin_ev_a.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=_enc_v_isr)
@@ -145,6 +153,12 @@ def reset_encoders() -> None:
     _counters[1] = 0
 
 
+def _map_enc(cnt, cnt_min, cnt_max, ang_min, ang_max):
+    """Mapeo lineal con saturación: cuentas → grados."""
+    t = max(0.0, min(1.0, (cnt - cnt_min) / (cnt_max - cnt_min)))
+    return ang_min + t * (ang_max - ang_min)
+
+
 # ---------------------------------------------------------------------------
 # Lectura — hardware real
 # ---------------------------------------------------------------------------
@@ -173,7 +187,9 @@ def _read_hardware() -> dict:
         "yaw_signed":   round(yaw_signed,   2),
         "enc_h":        _counters[0],
         "enc_v":        _counters[1],
-        "ts":           time.ticks_ms(),
+        "enc_h_deg":    round(_map_enc(_counters[0], config.ENC_H_CNT_MIN, config.ENC_H_CNT_MAX, config.ENC_H_ANG_MIN, config.ENC_H_ANG_MAX), 1),
+        "enc_v_deg":    round(_map_enc(_counters[1], config.ENC_V_CNT_MIN, config.ENC_V_CNT_MAX, config.ENC_V_ANG_MIN, config.ENC_V_ANG_MAX), 1),
+        "ts":           round(time.ticks_ms() / 1000, 1),
     }
 
 
@@ -224,6 +240,8 @@ def _read_simulated() -> dict:
         "yaw_signed":   round(yaw_signed,   2),
         "enc_h":        _sim_eh,
         "enc_v":        _sim_ev,
-        "ts":           time.ticks_ms(),
+        "enc_h_deg":    round(_map_enc(_sim_eh, config.ENC_H_CNT_MIN, config.ENC_H_CNT_MAX, config.ENC_H_ANG_MIN, config.ENC_H_ANG_MAX), 1),
+        "enc_v_deg":    round(_map_enc(_sim_ev, config.ENC_V_CNT_MIN, config.ENC_V_CNT_MAX, config.ENC_V_ANG_MIN, config.ENC_V_ANG_MAX), 1),
+        "ts":           round(time.ticks_ms() / 1000, 1),
     }
 

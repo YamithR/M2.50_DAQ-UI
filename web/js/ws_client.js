@@ -106,7 +106,7 @@
     set('tbl-yaw',   d.yaw_signed.toFixed(1));
     set('tbl-enc-h', d.enc_h);
     set('tbl-enc-v', d.enc_v);
-    set('tbl-ts',    d.ts);
+    set('tbl-ts',    d.ts.toFixed(1) + ' s');
   }
 
   // ── Generador de paquete simulado ──────────────────────────────────────────
@@ -140,7 +140,7 @@
       yaw_signed:   +(((simYaw + 180) % 360) - 180).toFixed(2),
       enc_h:        simEncH,
       enc_v:        simEncV,
-      ts:           Math.round(performance.now()),
+      ts:           +(performance.now() / 1000).toFixed(1),
     };
   }
 

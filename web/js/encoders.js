@@ -19,18 +19,18 @@ window.encoders = (function () {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // CONFIGURABLE — encoder horizontal  →  azimut [°]
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const ENC_H_CNT_MIN = -1000;  // cuentas al girar al máximo a la izquierda
-  const ENC_H_CNT_MAX =  1000;  // cuentas al girar al máximo a la derecha
-  const ENC_H_ANG_MIN = -180;   // azimut [°] en ENC_H_CNT_MIN
-  const ENC_H_ANG_MAX =  180;   // azimut [°] en ENC_H_CNT_MAX
+  let ENC_H_CNT_MIN = -1000;  // sobrescrito desde /api/config al cargar
+  let ENC_H_CNT_MAX =  1000;
+  let ENC_H_ANG_MIN = -180;
+  let ENC_H_ANG_MAX =  180;
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // CONFIGURABLE — encoder vertical  →  elevación [°]
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const ENC_V_CNT_MIN = -500;   // cuentas en depresión máxima
-  const ENC_V_CNT_MAX =  500;   // cuentas en elevación máxima
-  const ENC_V_ANG_MIN = -45;    // ángulo [°] en ENC_V_CNT_MIN
-  const ENC_V_ANG_MAX =  45;    // ángulo [°] en ENC_V_CNT_MAX
+  let ENC_V_CNT_MIN = -500;
+  let ENC_V_CNT_MAX =  500;
+  let ENC_V_ANG_MIN = -45;
+  let ENC_V_ANG_MAX =  45;
 
   // ── Referencias DOM ────────────────────────────────────────────────────────
   let elH = null, elV = null;

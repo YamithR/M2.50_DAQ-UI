@@ -81,14 +81,30 @@ IMU_AXIS_MAP  = (0, 1, 2)         # identidad: roll→roll, pitch→pitch, yaw�
 IMU_AXIS_SIGN = (1, 1, -1)         # invertir yaw para que gire en la dirección esperada (opcional, según montaje físico)
 
 # ---------------------------------------------------------------------------
-# USB HID Mouse absoluto (encoder → puntero de pantalla)
-# Editar para que coincida con el rango físico real de los encoders.
-# El centro del encoder (cuenta=0) se mapea al centro de la pantalla.
+# Encoder — Rangos físicos (FUENTE ÚNICA DE VERDAD)
+#   Ajustar estos 8 valores para calibrar el sistema.
+#   Firmware computa ángulos en grados; la UI los usa directamente.
+#
+#   Ejemplo: si 500 cuentas corresponden a 45° de elevación:
+#     ENC_V_CNT_MAX = 500   ENC_V_ANG_MAX = 45
 # ---------------------------------------------------------------------------
-HID_ENC_H_MIN   = -1000   # cuentas en el extremo izquierdo
-HID_ENC_H_MAX   =  1000   # cuentas en el extremo derecho
-HID_ENC_V_MIN   = -500    # cuentas en depresión máxima
-HID_ENC_V_MAX   =  500    # cuentas en elevación máxima
+ENC_H_CNT_MIN =  -1000    # cuentas en el límite izquierdo
+ENC_H_CNT_MAX =   1000    # cuentas en el límite derecho
+ENC_H_ANG_MIN =   -180    # azimut [°] en ENC_H_CNT_MIN
+ENC_H_ANG_MAX =    180    # azimut [°] en ENC_H_CNT_MAX
+
+ENC_V_CNT_MIN =    -500   # cuentas en depresión máxima
+ENC_V_CNT_MAX =     500   # cuentas en elevación máxima
+ENC_V_ANG_MIN =     -45   # ángulo [°] en ENC_V_CNT_MIN (depresión)
+ENC_V_ANG_MAX =      45   # ángulo [°] en ENC_V_CNT_MAX (elevación)
+
+# ---------------------------------------------------------------------------
+# USB HID Mouse absoluto (encoder → puntero de pantalla)
+# ---------------------------------------------------------------------------
+HID_ENC_H_MIN   = ENC_H_CNT_MIN   # ← alias, no editar aquí, editar ENC_* arriba
+HID_ENC_H_MAX   = ENC_H_CNT_MAX
+HID_ENC_V_MIN   = ENC_V_CNT_MIN
+HID_ENC_V_MAX   = ENC_V_CNT_MAX
 HID_INVERT_Y    = True    # True = elevación → cursor arriba (Y decrece)
 HID_CLICK_MS    = 60      # duración del clic izquierdo en milisegundos
 

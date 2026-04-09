@@ -263,10 +263,18 @@ _BODY_ERR = b'{"ok":false}'
 async def _handle_api(writer, method: bytes, path: str) -> None:
     if path == "/api/config" and method == b"GET":
         body = json.dumps({
-            "ssid":     config.WIFI_SSID,
-            "hostname": config.HOSTNAME,
-            "port":     config.PORT,
-            "simulate": config.SIMULATE_SENSORS,
+            "ssid":           config.WIFI_SSID,
+            "hostname":       config.HOSTNAME,
+            "port":           config.PORT,
+            "simulate":       config.SIMULATE_SENSORS,
+            "enc_h_cnt_min":  config.ENC_H_CNT_MIN,
+            "enc_h_cnt_max":  config.ENC_H_CNT_MAX,
+            "enc_h_ang_min":  config.ENC_H_ANG_MIN,
+            "enc_h_ang_max":  config.ENC_H_ANG_MAX,
+            "enc_v_cnt_min":  config.ENC_V_CNT_MIN,
+            "enc_v_cnt_max":  config.ENC_V_CNT_MAX,
+            "enc_v_ang_min":  config.ENC_V_ANG_MIN,
+            "enc_v_ang_max":  config.ENC_V_ANG_MAX,
         }).encode()
         writer.write(
             b"HTTP/1.1 200 OK\r\n" + _CT_JSON +
