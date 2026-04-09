@@ -103,7 +103,7 @@
     set('tbl-s3',    d.s3    ? 'ACTIVO' : 'inact.');
     set('tbl-roll',  d.roll.toFixed(1));
     set('tbl-pitch', d.pitch.toFixed(1));
-    set('tbl-yaw',   d.yaw.toFixed(1));
+    set('tbl-yaw',   d.yaw_signed.toFixed(1));
     set('tbl-enc-h', d.enc_h);
     set('tbl-enc-v', d.enc_v);
     set('tbl-ts',    d.ts);

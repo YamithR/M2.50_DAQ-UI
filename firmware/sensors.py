@@ -8,7 +8,7 @@ import config
 # ---------------------------------------------------------------------------
 # Estado del módulo
 # ---------------------------------------------------------------------------
-_imu      = None             # Instancia GY89 (modo hw)
+_imu      = None             # Instancia GY89 o MPU6050Driver (modo hw)
 _pin_s1   = None
 _pin_s2   = None
 _pin_s3   = None
@@ -22,12 +22,18 @@ _counters = [0, 0]           # [enc_h, enc_v]
 # ---------------------------------------------------------------------------
 # ISR de encoders (definidas a nivel de módulo para evitar problemas de closure)
 # ---------------------------------------------------------------------------
-def _enc_h_isr(_p):
-    _counters[0] += 1 if _pin_eh_b.value() else -1
+def _enc_h_isr(p):
+    # Cuadratura correcta: dirección = A_actual XOR B
+    # A sube(1)+B=0 → +1 | A baja(0)+B=1 → +1 | A sube(1)+B=1 → -1 | A baja(0)+B=0 → -1
+    a = p.value()
+    b = _pin_eh_b.value()
+    _counters[0] += 1 if (a ^ b) else -1
 
 
-def _enc_v_isr(_p):
-    _counters[1] += 1 if _pin_ev_b.value() else -1
+def _enc_v_isr(p):
+    a = p.value()
+    b = _pin_ev_b.value()
+    _counters[1] += 1 if (a ^ b) else -1
 
 
 # ---------------------------------------------------------------------------
@@ -65,10 +71,11 @@ def init() -> None:
     _pin_s3 = Pin(config.PIN_S3, Pin.IN, Pin.PULL_UP)
 
     # Encoders cuadratura: IRQ en fase A, dirección por estado de fase B
-    _pin_eh_b = Pin(config.PIN_ENC_H_B, Pin.IN)
-    _pin_ev_b = Pin(config.PIN_ENC_V_B, Pin.IN)
-    pin_eh_a  = Pin(config.PIN_ENC_H_A, Pin.IN)
-    pin_ev_a  = Pin(config.PIN_ENC_V_A, Pin.IN)
+    # LPD3806: salida NPN open-collector → pull-up interno obligatorio
+    _pin_eh_b = Pin(config.PIN_ENC_H_B, Pin.IN, Pin.PULL_UP)
+    _pin_ev_b = Pin(config.PIN_ENC_V_B, Pin.IN, Pin.PULL_UP)
+    pin_eh_a  = Pin(config.PIN_ENC_H_A, Pin.IN, Pin.PULL_UP)
+    pin_ev_a  = Pin(config.PIN_ENC_V_A, Pin.IN, Pin.PULL_UP)
 
     pin_eh_a.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=_enc_h_isr)
     pin_ev_a.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=_enc_v_isr)
@@ -84,8 +91,19 @@ def init() -> None:
         )
         print("[sensors] GY-89 (L3GD20 + LSM303D + BMP180) inicializado correctamente.")
     except Exception as e:
-        print(f"[sensors] AVISO — IMU/Barómetro GY-89 no disponible: {e}")
+        print(f"[sensors] AVISO — GY-89 no disponible: {e} — probando MPU-6050 …")
         _imu = None
+        try:
+            import mpu6050_driver
+            _imu = mpu6050_driver.MPU6050Driver(
+                config.PIN_SDA, config.PIN_SCL,
+                addr=config.IMU_MPU6050_ADDR,
+                freq=config.IMU_FREQ,
+            )
+            print("[sensors] MPU-6050 (GY-521) inicializado como fallback de IMU.")
+        except Exception as e2:
+            print(f"[sensors] AVISO — MPU-6050 tampoco disponible: {e2}")
+            _imu = None
 
     print("[sensors] Hardware inicializado.")
 
@@ -137,7 +155,11 @@ def _read_hardware() -> dict:
     s3 = not _pin_s3.value() if _pin_s3 else False
 
     if _imu is not None:
-        roll, pitch, yaw = _imu.read_angles()
+        _raw = _imu.read_angles()   # (roll_raw, pitch_raw, yaw_raw)
+        _m, _s = config.IMU_AXIS_MAP, config.IMU_AXIS_SIGN
+        roll  = _s[0] * _raw[_m[0]]
+        pitch = _s[1] * _raw[_m[1]]
+        yaw   = (_s[2] * _raw[_m[2]]) % 360.0  # normaliza a 0–360 tras invertir signo
     else:
         roll = pitch = yaw = 0.0
 

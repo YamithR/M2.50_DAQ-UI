@@ -282,7 +282,7 @@ window.gauges = (function () {
     const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     setVal('imu-roll-val',  d.roll.toFixed(1));
     setVal('imu-pitch-val', d.pitch.toFixed(1));
-    setVal('imu-yaw-val',   d.yaw.toFixed(1));
+    setVal('imu-yaw-val',   d.yaw_signed.toFixed(1));
   }
 
   return { update };

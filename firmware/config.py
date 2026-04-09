@@ -60,6 +60,27 @@ IMU_ACC_ADDR    = 0x1E            # LSM303D — SA0 conectado a GND
 IMU_FREQ        = 400_000         # Hz bus I2C (compartido por los tres chips)
 
 # ---------------------------------------------------------------------------
+# IMU fallback — MPU-6050 / GY-521
+#   Dirección por defecto: 0x68 (AD0=GND).  Usar 0x69 si AD0=VCC.
+# ---------------------------------------------------------------------------
+IMU_MPU6050_ADDR = 0x68           # MPU-6050 / GY-521
+
+# ---------------------------------------------------------------------------
+# IMU — Reasignación y orientación de ejes
+#
+#   IMU_AXIS_MAP  = (i_roll, i_pitch, i_yaw)
+#     Índice del eje RAW del driver que se asigna a cada salida lógica.
+#     0=roll_raw  1=pitch_raw  2=yaw_raw  (orden que devuelve read_angles())
+#     Ejemplo para intercambiar roll y pitch:  IMU_AXIS_MAP = (1, 0, 2)
+#
+#   IMU_AXIS_SIGN = (s_roll, s_pitch, s_yaw)
+#     Signo de cada eje de salida: +1 (sin invertir) o -1 (invertido).
+#     Ejemplo para invertir yaw:  IMU_AXIS_SIGN = (1, 1, -1)
+# ---------------------------------------------------------------------------
+IMU_AXIS_MAP  = (0, 1, 2)         # identidad: roll→roll, pitch→pitch, yaw→yaw
+IMU_AXIS_SIGN = (1, 1, -1)         # invertir yaw para que gire en la dirección esperada (opcional, según montaje físico)
+
+# ---------------------------------------------------------------------------
 # USB HID Mouse absoluto (encoder → puntero de pantalla)
 # Editar para que coincida con el rango físico real de los encoders.
 # El centro del encoder (cuenta=0) se mapea al centro de la pantalla.
